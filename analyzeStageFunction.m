@@ -1,4 +1,4 @@
-function [validStage, powerExtracted, maxMach, degOfRxnHub, bladeCountStator, bladeCountRotor] = analyzeStageFunction(kv2,alpha2, lambda, phi)
+function [validStage, powerExtracted, maxMach, degOfRxnHub, bladeCountStator, bladeCountRotor, alpha3, rotorTurnAng] = analyzeStageFunction(kv2,alpha2, lambda, phi, rpm)
 %ANALYZESTAGE determines the performance metrics of a turbine stator-rotor
 %stage.  Used to iterate.  see analyzeStage for Nomenclature, Flow
 %convention and Unit Convention.  Stage Requirements are constant, defined
@@ -12,8 +12,8 @@ radRes = 3; %radial point count for equilibrium. recommend odd, >2
 
 %% **** Design Constants to modify the performance of the stage ********
 %kv1, alpha2, lambda and phi from input parameters
-kr2 = .965; % determines r2 in % of r3
-kr1 = 1; % determines r1 in % of r2
+kr2 = 1.0173; % determines r2 in % of r3
+kr1 = 1.0265; % determines r1 in % of r2
 
 alpha1 = 0; %design constraint, first stage is axial flow
 
@@ -35,7 +35,6 @@ M1 = .4;
 eta_tt = .91;
 stageTotalPressRatio = 3.2;
 statorLossCoeff = .053;
-rpm = 13000;
 omega = (rpm*2*pi/60);
 m_dot = 70;
 
@@ -62,52 +61,9 @@ p03 = p01/stageTotalPressRatio;
 Tau0 = 1-eta_tt*(1-(p03/p01)^((gamma-1)/gamma));
 t03 = Tau0*t01;
 
-entropyChange = (t01-t03)*Cp;
+enthalpyChange = (t01-t03)*Cp;
 
 %% 7/8/9a - Um3 via lambda,  v3 via phi and r3 via u3
-u3 = [0,-sqrt(entropyChange/lambda)]; 
-v3 = [norm(u3)*phi, -inf];  % TO-DO: this involves phi - can this be negative or positive?
-
-v2 = [(v3(1)-v1(1))*kv2 + v1(1), -inf]; %kv2 is design parameter
-v2(2) = v2(1)*tan(alpha2);
-
-%% 9b - rotor constants and thus rm2,rm1
-rm3 = norm(u3)/omega;
-
-rm2 = rm3 * kr2;
-rm1 = rm2 * kr1;
-
-%% 10 - um2 from omega and the radius
-u2 = [0,-omega*rm2];
-u1 = [0,0] ;% stationary
-
-%% 12/14 - finish velocity triangles for the rotor
-
-v3(2) = (entropyChange+(-u2(2)*v2(2)))/-u3(2); %Euler Turbo Eqn, neg u due to conventions
-entCheck = u2(2)*v2(2) - u3(2)*v3(2);
-
-if(abs(entCheck -entropyChange) > 1) % leave small room for rounding/truncating
-    disp("ERROR: Due to unconventional angles/geometry Euler Turbo Eqn has produced an invalid results as implemented. Results invalid");
-end
-
-w2 = v2-u2;
-w3 = v3-u3;
-
-beta2 = atan(w2(2)/w2(1));
-beta3 = atan(w3(2)/w3(1));
-alpha3 = atan(v3(2)/v3(1));
-
-%% 11/15 - determine static conditions into and out of rotor (2) & (3) 
-
-t2 = t02 - .5* norm(v2)^2/Cp; % TO-DO: could these be the problem?
-M2 = norm(v2)/sqrt(gamma*R*t2);
-p2 = p02 / (1+(gamma-1)/2*M2^2)^(gamma/(gamma-1));
-A2 = m_dot*R*t2/(norm(v2)*p2);
-
-t3 = t03 - .5* norm(v3)^2/Cp;  % TO-DO: this is off by about 5% due to Cp not varying with termperature (or gamma)
-M3 = norm(v3)/sqrt(gamma*R*t3);
-p3 = p03 / (1+(gamma-1)/2*M3^2)^(gamma/(gamma-1));
-A3 = m_dot*R*t3/(norm(v3)*p3);%% 7/8/9a - Um3 via lambda,  v3 via phi and r3 via u3
 u3 = [0,-sqrt(enthalpyChange/lambda)]; 
 v3 = [norm(u3)*phi, -inf];  % TO-DO: this involves phi - can this be negative or positive?
 
@@ -129,8 +85,9 @@ u1 = [0,0] ;% stationary
 v3(2) = (enthalpyChange -(u2(2)*v2(2)))/-u3(2); %Euler Turbo Eqn, neg u due to conventions
 entCheck = u2(2)*v2(2) -u3(2)*v3(2);
 
-if(entCheck ~=enthalpyChange)
-    disp("ERROR: Due to unconventional angles/geometry Euler Turbo Eqn has produced an invalid results as implemented. Results invalid");
+if(abs(entCheck -enthalpyChange)>1)
+    validStage = false;
+    %disp("ERROR: Due to unconventional angles/geometry Euler Turbo Eqn has produced an invalid results as implemented. Results invalid");
 end
 
 w2 = v2-u2;
@@ -147,10 +104,20 @@ M2 = norm(v2)/sqrt(gamma*R*t2);
 p2 = p02 / (1+(gamma-1)/2*M2^2)^(gamma/(gamma-1));
 A2 = m_dot*R*t2/(v2(1)*p2);
 
-t3 = t03 - .5* norm(v3)^2/Cp;  % TO-DO: this is off by about 5% due to Cp not varying with termperature (or gamma)
+t3 = t03 - .5* norm(v3)^2/Cp;  
 M3 = norm(v3)/sqrt(gamma*R*t3);
 p3 = p03 / (1+(gamma-1)/2*M3^2)^(gamma/(gamma-1));
 A3 = m_dot*R*t3/(v3(1)*p3);
+
+%% 16 - Geometry - find the width of the channels given areas and mid radius
+rh1 = rm1 - A1/(4*pi*rm1);
+rt1 = 2*rm1 - rh1;
+
+rh2 = rm2 - A2/(4*pi*rm2);
+rt2 = 2*rm2 - rh2;
+
+rh3 = rm3 - A3/(4*pi*rm3);
+rt3 = 2*rm3 - rh3;
 
 %% 16 - Geometry - find the width of the channels given areas and mid radius
 rh1 = rm1 - A1/(4*pi*rm1);
@@ -260,7 +227,7 @@ bladeCountStator = floor(abs(2*pi*rStatorLEMidSpan/sStator));
 Mw2 = norm(w2)/sqrt(gamma*R*t2); %relative mach numbers
 Mw3 = norm(w3)/sqrt(gamma*R*t3);
 
-powerExtracted = dot(u3,v3)+dot(u2,v2);
+powerExtracted = m_dot*enthalpyChange;;
 
 %% Check for design constraints
 if(abs(degOfRxn_fun(1)-.1)>.01)
@@ -295,7 +262,7 @@ end
 
 %% Check for recommended constraints (from the notes)
 maxMach = max([M1,M2,M3,Mw2,Mw3]);
-if(maxMach > 1.34) %TBD
+if(maxMach > 1.3) %TBD
         validStage = false;
    %fprintf("POTENTIAL DESIGN FLAW! your maximum local or abs Mach is %.2f, which is above the suggested M = 1.3 cap of the notes\n",maxMach);
 end
@@ -313,7 +280,7 @@ if(statorTurnAng>deg2rad(120))
     %fprintf("POTENTIAL DESIGN FLAW! your stator turn angle is %.1f, which is above the suggested 120 [deg] max of the notes\n",rad2deg(statorTurnAng));
 end
 
-if(rotorTurnAng>deg2rad(120))
+if(rotorTurnAng>deg2rad(115))
         validStage = false;
     %fprintf("POTENTIAL DESIGN FLAW! your rotor turn angle is %.1f, which is above the suggested 120 [deg] max of the notes\n",rad2deg(rotorTurnAng));
 end

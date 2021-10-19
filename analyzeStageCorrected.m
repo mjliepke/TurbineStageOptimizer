@@ -27,11 +27,11 @@ axialRes = 15; %axial resolution for plots, points per blade
 %% **** Design Constants to modify the performance of the stage ********
 
 kv2 = .5051; % determines v2ax in % between v1ax and v3ax
-kr2 = 1.0173; % determines r2 in % of r3
-kr1 = 1.0265; % determines r1 in % of r2
+kr2 = 1.02034; % determines r2 in % of r3
+kr1 = 1.02952; % determines r1 in % of r2
 
 alpha1 = 0; %design constraint, first stage is axial flow
-alpha2 = -1.185; % guesswork value, angle out of stator and into rotor
+alpha2 = -1.18239; % guesswork value, angle out of stator and into rotor
 
 statorAR = .8; %.5 for hpt and 4-5 for lpt
 rotorAR = 1.05;
@@ -42,8 +42,8 @@ rotorTaper = .87;
 geoSpacing = 2.8*0.0254; %.75 inches recommended, converted to SI
 zweifel = .8; % recommended starting point
 
-lambda = 2.019; % work coeff, max is 2.2, can be lower if more eff needed
-phi = .8; %flow coeff, .8-1.1
+lambda = 2.06124; % work coeff, max is 2.2, can be lower if more eff needed
+phi = .80604; %flow coeff, .8-1.1
 
 %% Inlet Conditions [SI]
 t01 = 1700;
@@ -54,7 +54,7 @@ M1 = .4;
 eta_tt = .91;
 stageTotalPressRatio = 3.2;
 statorLossCoeff = .053;
-rpm = 12000;
+rpm = 12750;
 omega = (rpm*2*pi/60);
 m_dot = 70;
 
@@ -270,8 +270,8 @@ indexOfLEMidSpan = ceil(radRes/2);
 rRotorLEMidSpan = rotorYInterp(indexOfLEMidSpan);
 rStatorLEMidSpan = statorYInterp(indexOfLEMidSpan);
 
-bladeCountRotor = floor(abs(2*pi*rRotorLEMidSpan/sRotor))
-bladeCountStator = floor(abs(2*pi*rStatorLEMidSpan/sStator))
+bladeCountRotor = ceil(abs(2*pi*rRotorLEMidSpan/sRotor))
+bladeCountStator = ceil(abs(2*pi*rStatorLEMidSpan/sStator))
 
 %% Extras - Plot Stator & Rotor Blade Shape (stagger with random airfoil)
 % [x y z] = [axial (cAx), __ , radial]
